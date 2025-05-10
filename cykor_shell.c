@@ -17,7 +17,6 @@ void print_prompt() {
         printf("%s$ ", basename(cwd));
     } else {
         perror("getcwd");
-        printf("$ ");
     }
     fflush(stdout);
 }
@@ -65,9 +64,12 @@ void execute_command(char *line) {
         }
     }
     int pipes[MAX_CMDS - 1][2];
+    for (int i = 0; i < ncmd - 1; i++) {
+        pipe(pipes[i]);
+    }
     pid_t pids[MAX_CMDS];
     for (int i = 0; i < ncmd; i++) {
-        // 각 서브 명령
+        // 서브 cmd
         char *argv[MAX_ARGS];
         int argc = 0;
         char *arg = strtok(cmds[i], " \t");
@@ -80,6 +82,12 @@ void execute_command(char *line) {
 
         pids[i] = fork();
         if (pids[i] == 0) {
+            if (i > 0) {
+                dup2(pipes[i-1][0], STDIN_FILENO) < 0;
+            }
+            if (i < ncmd - 1) {
+                dup2(pipes[i][1], STDOUT_FILENO) < 0;
+            }
             for (int j = 0; j < ncmd - 1; j++) {
                 close(pipes[j][0]);
                 close(pipes[j][1]);
